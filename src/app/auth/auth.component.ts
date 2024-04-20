@@ -1,10 +1,97 @@
-import { Component } from '@angular/core';
+import { HttpErrorResponse } from '@angular/common/http';
+import { Component, OnInit } from '@angular/core';
+import { Router } from '@angular/router';
+import Swal from 'sweetalert2';
+import { User } from '../model/user.model';
+import { AuthentificationService } from '../services/auth.service';
+import { FormControl, FormGroup } from '@angular/forms';
+import { NgModel } from '@angular/forms';
 
 @Component({
-  selector: 'app-auth',
+  selector: 'app-index',
   templateUrl: './auth.component.html',
-  styleUrl: './auth.component.scss'
+  styleUrls: ['./auth.component.scss']
 })
-export class AuthComponent {
+export class AuthComponent implements OnInit {
+  public connecte : boolean = false ;
 
+  messageError:any
+
+  registerForm =  new FormGroup({
+    email:new FormControl(),
+    password:new FormControl()
+  })
+
+  user : User ={
+    email: '',
+    password: '',
+    name: undefined
+  }
+
+  constructor(private Auth:AuthentificationService,private route:Router) { }
+
+  ngOnInit(): void {
+  }
+
+  login(){
+
+    const data = {
+      user :{
+        email:this.user.email,
+        password:this.user.password,
+      }
+
+
+    };
+    
+    this.Auth.login(data).subscribe(
+      response => {
+        
+        console.log(response);
+        if(response.status==401){
+     
+          Swal.fire({
+            icon: 'error',
+            title: 'Oops...',
+            text: 'User Not Found Or invalide Credentialns'
+          })
+        }else{
+
+
+       if(response.user.email_confirmed==true) {
+        if(response.logged_in ==true && response.user.role =="admin"  ){ 
+          sessionStorage.setItem( 'admindata', JSON.stringify( response.user ) );
+          sessionStorage.setItem( 'logged_in', JSON.stringify( response.logged_in ) );
+          console.log(response);
+          this.route.navigate(['/dashboard-admin']);
+        }
+        else if(response.logged_in ==true && response.user.role =="employee")
+        {
+          sessionStorage.setItem( 'employeedata', JSON.stringify( response.user ) );
+          sessionStorage.setItem( 'logged_in', JSON.stringify( response.logged_in ) );
+          this.route.navigate(['/dashboard-employee']);
+        }
+        else{
+          Swal.fire({
+            icon: 'error',
+            title: 'Oops...',
+            text: 'Email or Password is Incorrect!'
+          })
+        }
+       }else{
+     
+          Swal.fire({
+            icon: 'error',
+            title: 'Oops...',
+            text: 'account created but not confirmed!, check Your EMail'
+          })
+        }
+       
+      }
+     
+      },(err:HttpErrorResponse)=>this.messageError=err.error.error);
+      
+  }
+
+  
 }
